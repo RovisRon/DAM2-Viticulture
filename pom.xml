@@ -42,5 +42,10 @@
             <artifactId>logback-classic</artifactId>
             <version>1.2.6</version>
         </dependency>
+        <dependency>
+        	<groupId>dam2_m06_uf4_JSP</groupId>
+        	<artifactId>dam2_m06_uf4_JSP</artifactId>
+        	<version>0.0.1-SNAPSHOT</version>
+        </dependency>
 	</dependencies>
 </project>

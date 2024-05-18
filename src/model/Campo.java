@@ -20,7 +20,7 @@ public class Campo {
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	@Column(name = "id", unique = true, nullable = true)
-	private int id_campo;
+	private String id_campo;
 
 	@OneToMany
     @JoinColumn(name = "campo_id")
@@ -29,6 +29,9 @@ public class Campo {
 	@OneToOne
 	@JoinColumn(name = "id_bodega")
 	private Bodega bodega;
+	
+	@Column(name = "vendimiado", columnDefinition = "boolean default false")
+    private boolean vendimiado;
 	
 	public Campo() {}
 
@@ -52,4 +55,16 @@ public class Campo {
 		vids.addAll(this.vids);
 		return vids;
 	}
+	
+	public boolean isVendimiado() {
+		return vendimiado;
+	}
+
+	public void setVendimiado(boolean vendimiado) {
+		this.vendimiado = vendimiado;
+	}
+
+	public void setId(String id) {
+        this.id_campo = id;
+    }
 }

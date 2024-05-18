@@ -1,14 +1,24 @@
 package manager;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bson.types.ObjectId;
 import org.bson.Document;
+import org.bson.conversions.Bson;
+
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.Updates;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.result.UpdateResult;
+
+import model.Campo;
 
 public class Manager {
     private static Manager manager;
@@ -20,6 +30,7 @@ public class Manager {
     private Document c;
     private Map<Document, List<Document>> bodegaVidsMap;
     private List<Document> camposRecolectados;
+    private List<Campo> campos;
     
     private Manager() {
         this.entradas = new ArrayList<>();
@@ -57,10 +68,13 @@ public class Manager {
                     addBodega(split);
                     break;
                 case "C":
-                    addCampo(split);
+                    addCampo(split, false);
                     break;
                 case "V":
                     addVid(split);
+                    break;
+                case "M":
+                    vendimiado(split);
                     break;
                 case "#":
                     vendimia();
@@ -92,7 +106,6 @@ public class Manager {
     }
 
 	private void addVid(String[] split) {
-        // Create a new vid document
         Document v = new Document();
         v.put("tipo", split[1].toUpperCase());
         v.put("cantidad", Integer.parseInt(split[2]));
@@ -114,12 +127,50 @@ public class Manager {
         bodegaVidsMap.put(b, bodegaVids);
     }
 
-	private void addCampo(String[] split) {
-        c = new Document();
-        c.put("bodega", b.get("_id"));
-        collection = database.getCollection("Campo");
-        collection.insertOne(c);
-        camposRecolectados.add(c);
+	private void addCampo(String[] split, boolean vendimiado) {
+        try {
+            Document document = new Document();
+            document.put("vendimiado", vendimiado);
+            collection = database.getCollection("campo");
+            collection.insertOne(document);
+            System.out.println("Campo agregado correctamente.");
+            String nuevoCampoId = document.getObjectId("_id").toString();
+            Campo nuevoCampo = new Campo();
+            nuevoCampo.setId(nuevoCampoId);
+            nuevoCampo.setVendimiado(vendimiado);
+            campos.add(nuevoCampo);
+        } catch (Exception e) {
+            System.out.println("Error al agregar el campo: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private String getLastCampoId() {
+        MongoCollection<Document> campoCollection = database.getCollection("campo");
+        Document lastCampo = campoCollection.find().sort(Sorts.descending("_id")).first();
+        if (lastCampo != null) {
+            String lastCampoId = lastCampo.getObjectId("_id").toString();
+            return lastCampoId;
+        } else {
+            return null;
+        }
+    }
+    
+    private void vendimiado(String[] parts) {
+        if (parts.length >= 2) {
+            String campoId = parts[1];
+            Bson filter = Filters.eq("_id", new ObjectId(campoId));
+            Bson update = Updates.set("vendimiado", true);
+            MongoCollection<Document> campoCollection = database.getCollection("campo");
+            UpdateResult updateResult = campoCollection.updateOne(filter, update);
+            if (updateResult.getModifiedCount() < 0) {
+            	System.out.println("No se han encontrado campos con esta ID.");
+            } else {
+            	System.out.println("Campo vendimiado correctamente.");
+            }
+        } else {
+            System.out.println("Formato inesperado.");
+        }
     }
 
 	private void addBodega(String[] split) {
@@ -141,5 +192,5 @@ public class Manager {
         for (Document doc : collection.find()) {
             System.out.println(doc.toJson());
         }
-    }	
+    }
 }
