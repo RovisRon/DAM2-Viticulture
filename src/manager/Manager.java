@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 import org.bson.types.ObjectId;
 import org.bson.Document;
@@ -19,6 +20,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.result.UpdateResult;
 
 import model.Campo;
+import model.Contador;
 
 public class Manager {
     private static Manager manager;
@@ -29,13 +31,14 @@ public class Manager {
     private Document b;
     private Document c;
     private Map<Document, List<Document>> bodegaVidsMap;
-    private List<Document> camposRecolectados;
     private List<Campo> campos;
+    private boolean clean = true;
+	private int vendimiados = 1;
     
     private Manager() {
         this.entradas = new ArrayList<>();
         this.bodegaVidsMap = new HashMap<>();
-        this.camposRecolectados = new ArrayList<>();
+        new ArrayList<>();
     }
     
     public static Manager getInstance() {
@@ -84,26 +87,22 @@ public class Manager {
             }
         }
     }
-
+	
 	private void vendimia() {
-        for (Map.Entry<Document, List<Document>> entry : bodegaVidsMap.entrySet()) {
-            Document bodega = entry.getKey();
-            List<Document> vids = entry.getValue();
-            bodega.put("vids", vids);
-        }
-        
-        for (Document campo : camposRecolectados) {
-            if (campo.containsKey("vids")) {
-                campo.put("recolectado", true);
-                collection = database.getCollection("Campo");
-                Document updateQuery = new Document();
-                updateQuery.append("$set", new Document().append("recolectado", true));
-                collection.updateOne(new Document("_id", campo.get("_id")), updateQuery);
-            }
-        }
-        
-        bodegaVidsMap.clear();
-    }
+
+		if(clean) {
+			collection = database.getCollection("vendimiados");
+			collection.drop();
+			clean = false;
+		}
+		new Contador();
+		collection = database.getCollection("vendimiados");
+		LocalDateTime localdatetime = LocalDateTime.now();
+		Document document = new Document().append("fecha", localdatetime).append("counter", vendimiados);
+		collection.insertOne(document);
+		vendimiados++;
+	}
+
 
 	private void addVid(String[] split) {
         Document v = new Document();
@@ -113,7 +112,7 @@ public class Manager {
         v.put("campo", c.get("_id"));
         collection = database.getCollection("Vid");
         collection.insertOne(v);
-        List<Document> vids = (List<Document>) c.get("vids");
+		List<Document> vids = (List<Document>) c.get("vids");
         if (vids == null) {
             vids = new ArrayList<>();
         }
@@ -142,17 +141,6 @@ public class Manager {
         } catch (Exception e) {
             System.out.println("Error al agregar el campo: " + e.getMessage());
             e.printStackTrace();
-        }
-    }
-    
-    private String getLastCampoId() {
-        MongoCollection<Document> campoCollection = database.getCollection("campo");
-        Document lastCampo = campoCollection.find().sort(Sorts.descending("_id")).first();
-        if (lastCampo != null) {
-            String lastCampoId = lastCampo.getObjectId("_id").toString();
-            return lastCampoId;
-        } else {
-            return null;
         }
     }
     
